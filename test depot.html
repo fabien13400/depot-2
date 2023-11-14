@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<!-- saved from url=(0077)file:///C:/Users/picho/OneDrive/Documents/Travail/Course%202%20-%20Copie.html -->
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+
+    
+
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+
+    <title>Test vidéo</title>
+
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <script src="./test depot_files/jquery.min.js.téléchargé"></script><style type="text/css" id="operaUserStyle"></style>
+
+    <link rel="stylesheet" href="./test depot_files/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
+
+    <script src="./test depot_files/bootstrap.min.js.téléchargé" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous"></script>
+
+</head>
+
+
+
+<body>
+
+    <div id="form" class="form-group" style="display: none;">
+
+        <label value="lien">Lien : </label>
+
+        <input id="inputLien" class="form-control" name="lien" type="text">
+
+        <label value="numVoiture">Numéro(s) de voiture (séparés par virgule) : </label>
+
+        <input id="inputNumVoiture" class="form-control" name="numVoiture" type="text">
+
+        <input type="submit" value="GOOOOOOO!!!!" id="go" class="btn btn-primary">
+
+    </div>
+
+    <div id="resultats" style="display: block;"><span id="voiture11">11 </span><table id="table11" class="table"><tbody><tr><th>Tour</th><th>Temps du tour</th><th>Position</th><th>Écart avec le premier</th><th>Écart avec le précédant</th><th>Temps course</th></tr></tbody><tbody id="tableBody11"><tr class="line"><td class="numTour">12</td><td>00:03:29,136</td><td>2</td><td>0.274</td><td>0.274</td><td>00:43:30,642</td></tr></tbody></table></div>
+
+
+
+
+
+
+
+
+
+<script>
+
+    // https://www.its-live.net/#/home
+
+    var lien;
+
+    $("#go").click(function () {
+
+        $("#form").css("display", "none");
+
+        $("#resultats").css("display", "block");
+
+
+
+        var voitures = $("#inputNumVoiture").val().split(",");
+
+
+
+        voitures.forEach(function (n) {
+
+            $("#resultats").append("<span id='voiture" + n + "'>" + n + " </span><table id='table" + n + "' class='table'><tr><th>Tour</th><th>Temps du tour</th><th>Position</th><th>Écart avec le premier</th><th>Écart avec le précédant</th><th>Temps course</th></tr><tbody id='tableBody" + n + "'></tbody></table>")
+
+        })
+
+        lien = $("#inputLien").val().split("/");
+
+        getTimes(voitures)
+
+        setInterval(getTimes, 2000, voitures);
+
+    });
+
+
+
+    function getTimes(nums) {
+
+        $.post("https://api-live.its-live.net/v1/Session/GetRankingWithBestOfAll", {
+
+            endPos: 1000000,
+
+            ssid: { cs_id: lien[5], season: lien[6], event_id: lien[7], session_id: lien[8] },
+
+            startId: 0,
+
+            startPos: 0,
+
+        }
+
+        ).done(function (data) {
+
+            $.post("https://api-live.its-live.net/v1/Session/GetLastRaceInfo", {
+
+                cs_id: lien[5], 
+
+                season: lien[6], 
+
+                event_id: lien[7], 
+
+                session_id: lien[8]
+
+            }
+
+            ).done(function (dataTime) {
+
+                nums.forEach(function (n) {
+
+                    data.ranking.forEach(function (pilote) {
+
+                        if (pilote.number == n) {
+
+                            if ($("#tableBody" + n).find(".numTour").first().text() != pilote.total_lap) {
+
+                                var temps = pilote.lap_time;
+
+                                if (typeof temps != 'string' && temps > 0) {
+
+                                    temps = sec2time(temps / 86400000 * 24 * 60 * 60);
+
+                                }
+
+                                else {
+
+                                    temps = "PIT";
+
+                                }
+
+
+
+                                var tempsEcartPremier = pilote.gap_first;
+
+                                if (typeof tempsEcartPremier != 'string') {
+
+                                    tempsEcartPremier = sec2time(tempsEcartPremier)
+
+                                }
+
+
+
+                                var tempsEcartPrecedant = pilote.gap_prev;
+
+                                if (typeof tempsEcartPrecedant != 'string') {
+
+                                    tempsEcartPrecedant = sec2time(tempsEcartPrecedant)
+
+                                }
+
+
+
+                                $("#tableBody" + n).prepend("<tr class='line'><td class='numTour'>" + pilote.total_lap + "</td><td>" + temps + "</td><td>" + pilote.pos + "</td><td>" + tempsEcartPremier + "</td><td>" + tempsEcartPrecedant + "</td><td>" + sec2time(dataTime.elapsed_time / 86400000 * 24 * 60 * 60) + "</td></tr>")
+
+                            }
+
+                        }
+
+                    })
+
+                })
+
+            });
+
+        });
+
+    }
+
+
+
+    function sec2time(timeInSeconds) {
+
+        var pad = function (num, size) { return ('000' + num).slice(size * -1); },
+
+            time = parseFloat(timeInSeconds).toFixed(3),
+
+            hours = Math.floor(time / 60 / 60),
+
+            minutes = Math.floor(time / 60) % 60,
+
+            seconds = Math.floor(time - minutes * 60),
+
+            milliseconds = time.slice(-3);
+
+
+
+        return pad(hours, 2) + ':' + pad(minutes, 2) + ':' + pad(seconds, 2) + ',' + pad(milliseconds, 3);
+
+    }
+
+
+
+</script>
+
+
+
+<style>
+
+    #form {
+
+        margin: 15%;
+
+    }
+
+</style></body></html>
